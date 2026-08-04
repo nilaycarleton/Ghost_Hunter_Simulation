@@ -8,7 +8,7 @@ import { RunDatabase } from "./database.mjs";
 import { explainRun } from "./explanations.mjs";
 import { SessionManager } from "./sessions.mjs";
 
-process.loadEnvFile?.();
+if (existsSync(".env")) process.loadEnvFile?.(".env");
 
 const root = normalize(fileURLToPath(new URL("..", import.meta.url)));
 const web = join(root, "web");
