@@ -75,6 +75,9 @@ PUBLIC_FRAME_ANCESTORS=https://hauntedthreads.site,https://www.hauntedthreads.si
 Use Render's environment variable UI for secrets. Do not put real keys in the
 repository.
 
+Do not use `HOST=127.0.0.1` on Render. Render can only route traffic to a
+service that listens on `0.0.0.0`.
+
 ## 4. Test the Render subdomain first
 
 Before changing Namecheap DNS, test the generated Render URL:
