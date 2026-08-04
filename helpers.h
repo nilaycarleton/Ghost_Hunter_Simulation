@@ -57,6 +57,12 @@ bool is_case_solved(EvidenceByte collected);
  * @return Random number in [lower_inclusive, upper_exclusive).
  */
 int rand_int_threadsafe(int lower_inclusive, int upper_exclusive);
+void random_set_seed(unsigned int seed);
+unsigned int random_derive_seed(unsigned int stream_id);
+int rand_int_r(unsigned int* state, int lower_inclusive, int upper_exclusive);
+void simulation_set_runtime(unsigned int tick_ms, unsigned int max_ticks);
+void simulation_sleep_tick(void);
+unsigned int simulation_max_ticks(void);
 
 /**
  * @brief Append a MOVE entry for a hunter.

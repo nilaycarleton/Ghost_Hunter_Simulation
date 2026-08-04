@@ -26,7 +26,7 @@ void room_init(struct Room* room, const char* name, bool is_exit, int index) {
     room->hunter_count = 0;
     room->is_exit = is_exit;
     room->evidence = 0;
-    sem_init(&room->mutex, 0, 1);
+    pthread_mutex_init(&room->mutex, NULL);
 }
 
 /**
@@ -50,7 +50,7 @@ void room_connect(struct Room* a, struct Room* b) {
  * @param[in] room Pointer to the Room structure to clean up.
  */
 void room_cleanup(struct Room* room) {
-    sem_destroy(&room->mutex);
+    pthread_mutex_destroy(&room->mutex);
 }
 
 /**

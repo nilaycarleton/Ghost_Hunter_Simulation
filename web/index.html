@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Haunted Threads: an interactive visualization of a concurrent C ghost-hunting simulation.">
+  <title>Haunted Threads</title>
+  <script>
+    (() => {
+      try {
+        const stored = localStorage.getItem("haunted-theme");
+        const system = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        document.documentElement.dataset.theme = stored || system;
+      } catch {
+        document.documentElement.dataset.theme = "dark";
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <a class="skip-link" href="#simulation">Skip to simulation</a>
+  <div class="diagnostic-grid" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="brand-lockup">
+      <span class="eyebrow">LIVE C CONCURRENCY LAB</span>
+      <h1>Haunted Threads</h1>
+      <p>Native hunters, one ghost, shared rooms, evidence trails, and a visible path home.</p>
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="#simulation">Simulator</a>
+        <a href="#history-title">Runs</a>
+        <a href="/docs/api.md">API</a>
+        <a href="/benchmarks/navigation.svg">Benchmarks</a>
+        <a href="#legal-links">Legal</a>
+      </nav>
+    </div>
+    <div class="topbar-tools">
+      <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to light mode" aria-pressed="true">
+        <span class="theme-icon" aria-hidden="true"></span>
+        <span id="theme-label">Dark</span>
+      </button>
+      <div class="auth-panel" aria-label="Account controls">
+        <div>
+          <b id="auth-title">Guest mode</b>
+          <span id="auth-message">Run simulations instantly. Sign in to save history, replays, and exports.</span>
+        </div>
+        <div class="auth-actions">
+          <button id="sign-in" type="button">Sign in</button>
+          <button id="sign-up" type="button">Create account</button>
+          <div id="user-button" aria-label="Signed-in user menu"></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="simulation" class="sim-shell">
+    <section class="command-rail" aria-label="Simulation command controls">
+      <div class="rail-heading">
+        <span class="eyebrow">COMMAND DECK</span>
+        <h2>Configure run</h2>
+      </div>
+      <form class="controls" id="configuration">
+        <label>Seed
+          <input id="seed" name="seed" type="number" value="42" min="0" max="4294967295" required>
+        </label>
+        <label>Return strategy
+          <select id="nav" name="navigation">
+            <option value="bfs">BFS shortest path</option>
+            <option value="breadcrumb">Breadcrumb stack</option>
+            <option value="random">Random walk</option>
+          </select>
+        </label>
+        <label>Scheduler
+          <select id="scheduler" name="scheduler">
+            <option value="threads">POSIX threads</option>
+            <option value="deterministic">Deterministic turns</option>
+          </select>
+        </label>
+        <label class="team-field">Hunter team
+          <input id="hunters" name="hunters" value="Ada, Grace, Linus" maxlength="255" aria-describedby="team-help">
+          <small id="team-help">1-8 names, separated by commas</small>
+        </label>
+        <button id="run" type="submit"><span>Run simulation</span><i aria-hidden="true">></i></button>
+      </form>
+
+      <nav class="playback" aria-label="Simulation playback">
+        <div class="playback-actions">
+          <button id="pause" type="button" disabled>Pause</button>
+          <button id="step" type="button" disabled>Step</button>
+          <button id="restart" type="button" disabled>Restart</button>
+          <button id="cancel" type="button" disabled>Cancel</button>
+        </div>
+        <label>Playback speed
+          <select id="speed">
+            <option value="400">0.5x</option>
+            <option value="200" selected>1x</option>
+            <option value="100">2x</option>
+            <option value="50">4x</option>
+          </select>
+        </label>
+        <span id="progress">0 events</span>
+      </nav>
+
+      <div class="run-stats" aria-label="Live run counters">
+        <span><b id="event-count">0</b>events</span>
+        <span><b id="queue-count">0</b>queued</span>
+        <span><b id="evidence-count">0</b>clues</span>
+      </div>
+    </section>
+
+    <section class="house-panel">
+      <div class="section-title">
+        <span>HOUSE GRAPH</span>
+        <span id="status" role="status" aria-live="polite">READY</span>
+      </div>
+      <div id="house" aria-label="Haunted Threads room graph">
+        <div class="beam-field" aria-hidden="true"></div>
+        <svg id="connections" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
+        <div id="entity-layer" aria-hidden="true"></div>
+      </div>
+      <div class="legend" aria-label="Map legend">
+        <span><i class="legend-dot hunter-dot"></i>Hunter</span>
+        <span><i class="legend-dot ghost-dot"></i>Ghost</span>
+        <span><i class="legend-evidence">E</i>Evidence</span>
+      </div>
+    </section>
+
+    <aside class="telemetry-rail">
+      <div class="section-title">
+        <span>ENTITY TELEMETRY</span>
+        <span>fear / boredom</span>
+      </div>
+      <div id="entities"><p class="empty">Run a simulation to wake the house.</p></div>
+      <div class="section-title log-title">
+        <span>EVENT TIMELINE</span>
+        <button id="clear" type="button">clear</button>
+      </div>
+      <ol id="log" aria-live="polite" aria-relevant="additions"></ol>
+    </aside>
+  </main>
+
+  <section class="showcase" aria-labelledby="showcase-title">
+    <div class="showcase-copy">
+      <span class="eyebrow">ENGINEERING SHOWCASE</span>
+      <h2 id="showcase-title">What the simulator exposes</h2>
+      <p>
+        Haunted Threads turns thread synchronization, pathfinding, persistence,
+        replay, and event streaming into a visible systems dashboard.
+      </p>
+    </div>
+    <div class="showcase-grid">
+      <article>
+        <span>01</span>
+        <b>Native C concurrency</b>
+        <p>Hunters and the ghost execute as independent workers sharing the same house graph.</p>
+      </article>
+      <article>
+        <span>02</span>
+        <b>Canonical locking</b>
+        <p>Room movement uses a stable lock order to prevent circular wait and deadlock.</p>
+      </article>
+      <article>
+        <span>03</span>
+        <b>Pathfinding benchmark</b>
+        <p>BFS shortest-path return is measured against breadcrumb and random navigation.</p>
+      </article>
+      <article>
+        <span>04</span>
+        <b>Full-stack replay system</b>
+        <p>Node streams native events live, persists signed-in runs, and supports public share links.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="explain-panel" aria-labelledby="explain-title">
+    <div class="section-title">
+      <span id="explain-title">RUN EXPLANATION</span>
+      <span id="explain-provider">instant explanation - no cost</span>
+    </div>
+    <p class="explain-intro">Turn the latest run into a plain-language story or a technical interview walkthrough.</p>
+    <div class="explain-controls">
+      <label>Explain it for
+        <select id="explain-audience">
+          <option value="beginner" selected>Anyone</option>
+          <option value="engineer">Technical reader</option>
+          <option value="recruiter">Portfolio visitor</option>
+        </select>
+      </label>
+      <label>Show me
+        <select id="explain-mode">
+          <option value="summary">The story of this run</option>
+          <option value="interviewer">How the system works</option>
+          <option value="benchmark">How routes compare</option>
+        </select>
+      </label>
+      <button id="explain-run" type="button" disabled>Tell me what happened</button>
+    </div>
+    <div id="explain-output" class="explain-output">
+      <p class="empty">Start or replay a simulation, then come back here for the story.</p>
+    </div>
+  </section>
+
+  <section class="run-library" aria-labelledby="history-title">
+    <div class="section-title">
+      <span id="history-title">RECENT RUNS</span>
+      <button id="refresh-history" type="button">refresh</button>
+    </div>
+    <div class="share-tools">
+      <button id="copy-link" type="button" disabled>Copy replay link</button>
+      <a id="export-json" class="button-link disabled" aria-disabled="true">Export JSON</a>
+      <a id="export-csv" class="button-link disabled" aria-disabled="true">Export CSV</a>
+    </div>
+    <div id="history"><p class="empty">No saved runs yet.</p></div>
+  </section>
+
+  <footer class="site-footer">
+    <section class="footer-brand" aria-labelledby="footer-brand-title">
+      <span class="eyebrow">PROJECT STATUS</span>
+      <b id="footer-brand-title">Haunted Threads</b>
+      <p>Concurrent C ghost-hunting simulation with live browser replay, exports, and shareable run history.</p>
+      <small>&copy; 2026 Haunted Threads project maintainers.</small>
+    </section>
+    <nav class="footer-group" aria-label="Project resources">
+      <b>Resources</b>
+      <a href="/docs/api.md">API docs</a>
+      <a href="/docs/production-checklist.md">Production checklist</a>
+      <a href="/docs/oracle-cloud-deployment.md">Deployment runbook</a>
+      <a href="/benchmarks/navigation.svg">Navigation benchmark</a>
+      <a href="https://github.com/nilaycarleton/Ghost_Hunter_Simulation">GitHub repository</a>
+    </nav>
+    <div class="footer-group">
+      <b>System</b>
+      <div class="footer-badges" aria-label="System features">
+        <span>Native C engine</span>
+        <span>POSIX threads</span>
+        <span>Canonical locking</span>
+        <span>Seeded PRNG</span>
+        <span>Replay exports</span>
+      </div>
+    </div>
+    <nav class="footer-group" id="legal-links" aria-label="Legal documents">
+      <b>Legal</b>
+      <a href="/legal/privacy.html">Privacy Policy</a>
+      <a href="/legal/terms.html">Terms of Use</a>
+      <a href="/legal/cookies.html">Cookie Notice</a>
+      <a href="/legal/accessibility.html">Accessibility</a>
+      <a href="/legal/security.html">Security Disclosure</a>
+      <a href="/legal/licenses.html">Licenses</a>
+    </nav>
+  </footer>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

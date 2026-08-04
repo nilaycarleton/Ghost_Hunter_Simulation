@@ -2,8 +2,8 @@
 #define DEFS_H
 
 #include <stdbool.h>
-#include <semaphore.h>
 #include <pthread.h>
+#include <stdatomic.h>
 
 #define MAX_ROOM_NAME 64
 #define MAX_HUNTER_NAME 64
@@ -16,11 +16,18 @@
 
 typedef unsigned char EvidenceByte;
 
+enum NavigationStrategy {
+    NAV_BFS = 0,
+    NAV_BREADCRUMB = 1,
+    NAV_RANDOM = 2
+};
+
 // Reasons a hunter may terminate the simulation.
 enum LogReason {
     LR_EVIDENCE = 0,
     LR_BORED = 1,
-    LR_AFRAID = 2
+    LR_AFRAID = 2,
+    LR_TIMEOUT = 3
 };
 
 // Single evidence types
@@ -66,7 +73,7 @@ enum GhostType {
 struct CaseFile {
     EvidenceByte collected;
     bool         solved;
-    sem_t        mutex;
+    pthread_mutex_t mutex;
 };
 
 struct Ghost;
@@ -98,7 +105,7 @@ struct Room {
     int hunter_count;
     bool is_exit;
     EvidenceByte evidence;
-    sem_t mutex;
+    pthread_mutex_t mutex;
 };
 
 // Represents the ghost entity which includes its evidence type and behavior state
@@ -107,7 +114,12 @@ struct Ghost {
     enum GhostType type;
     struct Room* current_room;
     int boredom;
-    bool exited;
+    atomic_bool exited;
+    unsigned int rng_state;
+    unsigned int ticks;
+    unsigned int moves;
+    unsigned int evidence_dropped;
+    bool finalized;
 };
 
 /**
@@ -124,14 +136,19 @@ struct Hunter {
     int fear;
     int boredom;
     enum LogReason exit_reason;
-    bool exited;
+    atomic_bool exited;
     bool returning_to_van;
 
     // Bonus 3 & 4 fields
-    bool use_bfs;                      
+    enum NavigationStrategy navigation;
     int visit_count[MAX_ROOMS];        
     struct Room* bfs_path[MAX_ROOMS];  
     int bfs_path_length;               
+    unsigned int rng_state;
+    unsigned int ticks;
+    unsigned int moves;
+    unsigned int evidence_found;
+    bool finalized;
 };
 
 /**
@@ -169,12 +186,20 @@ void house_cleanup(struct House* house);
 
 // Hunter functions
 void hunter_init(struct Hunter* hunter, const char* name, int id, 
-                 struct Room* starting_room, struct CaseFile* case_file, bool use_bfs_path);
+                 struct Room* starting_room, struct CaseFile* case_file,
+                 enum NavigationStrategy navigation);
 void hunter_update_stats(struct Hunter* hunter);
+void hunter_gather_evidence(struct Hunter* hunter);
+bool hunter_move(struct Hunter* hunter);
+bool hunter_step(struct Hunter* hunter);
+void hunter_finalize(struct Hunter* hunter);
 void* hunter_thread(void* arg);
+int bfs_path_find(struct Room* start_room, struct Room** path);
 
 // Ghost functions
 void ghost_init(struct Ghost* ghost, struct House* house);
+bool ghost_step(struct Ghost* ghost);
+void ghost_finalize(struct Ghost* ghost);
 void* ghost_thread(void* arg);
 
 // Stack functions

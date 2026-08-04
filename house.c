@@ -35,13 +35,13 @@ void house_init(struct House* house) {
     // Initialize CaseFile fields and its mutex
     house->case_file.collected = 0;
     house->case_file.solved = false;
-    sem_init(&house->case_file.mutex, 0, 1);
+    pthread_mutex_init(&house->case_file.mutex, NULL);
     
     // Initialize ghost fields
     house->ghost.id = DEFAULT_GHOST_ID;
     house->ghost.current_room = NULL;
     house->ghost.boredom = 0;
-    house->ghost.exited = false;
+    atomic_init(&house->ghost.exited, false);
 }
 
 /**
@@ -97,7 +97,7 @@ void house_cleanup(struct House* house) {
     }
     
     // Destroy the shared case file mutex
-    sem_destroy(&house->case_file.mutex);
+    pthread_mutex_destroy(&house->case_file.mutex);
     
     // Clean up all room mutexes
     for (int i = 0; i < house->room_count; i++) {

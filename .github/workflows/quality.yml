@@ -1,0 +1,29 @@
+name: quality
+on: [push, pull_request]
+jobs:
+  tests-and-sanitizers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: make test
+      - run: make stress
+      - name: Reproducible navigation benchmark
+        run: python3 scripts/benchmark.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: navigation-benchmarks
+          path: benchmarks/
+      - name: AddressSanitizer and UndefinedBehaviorSanitizer
+        run: make asan && ./ghost_hunt --seed 42 --hunters Ada,Grace
+      - name: ThreadSanitizer
+        run: make tsan && ./ghost_hunt --seed 42 --hunters Ada,Grace
+  valgrind:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y valgrind
+      - run: make
+      - run: valgrind --leak-check=full --show-leak-kinds=all --errors-for-leak-kinds=all --error-exitcode=1 ./ghost_hunt --seed 42 --hunters Ada,Grace

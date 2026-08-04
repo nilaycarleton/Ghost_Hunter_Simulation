@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Cookie Notice for Haunted Threads.">
+  <title>Cookie Notice - Haunted Threads</title>
+  <script>
+    (() => {
+      try {
+        const stored = localStorage.getItem("haunted-theme");
+        const system = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        document.documentElement.dataset.theme = stored || system;
+      } catch {
+        document.documentElement.dataset.theme = "dark";
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="legal-body">
+  <a class="skip-link" href="#legal-main">Skip to document</a>
+  <div class="diagnostic-grid" aria-hidden="true"></div>
+  <header class="legal-header">
+    <a href="/" class="legal-back">Back to simulator</a>
+    <span class="eyebrow">LEGAL DOCUMENT</span>
+    <h1>Cookie Notice</h1>
+    <p>Last updated: August 3, 2026</p>
+  </header>
+  <main id="legal-main" class="legal-doc">
+    <section>
+      <h2>Essential Storage</h2>
+      <p>The site may use essential cookies or equivalent browser storage for authentication sessions, account state, security, and replay access. These are needed for signed-in features.</p>
+    </section>
+    <section>
+      <h2>Local Preferences</h2>
+      <p>The light/dark theme setting is stored in localStorage as <code>haunted-theme</code>. Clearing browser site data removes this preference.</p>
+    </section>
+    <section>
+      <h2>Analytics and Advertising</h2>
+      <p>This implementation does not include advertising cookies or targeted-ad tracking. If analytics or advertising tools are added later, update this notice before deployment.</p>
+    </section>
+    <section>
+      <h2>Managing Cookies</h2>
+      <p>You can block, delete, or restrict cookies in your browser settings. Some signed-in features may stop working if essential authentication storage is disabled.</p>
+    </section>
+  </main>
+</body>
+</html>

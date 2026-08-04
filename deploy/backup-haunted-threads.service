@@ -1,0 +1,9 @@
+[Unit]
+Description=Back up Haunted Threads SQLite database
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/HauntedThreads
+ExecStart=/home/ubuntu/HauntedThreads/scripts/backup-sqlite.sh

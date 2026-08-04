@@ -1,0 +1,9 @@
+*.o
+*.dSYM/
+ghost_hunt
+ghost_tests
+log_*.csv
+.DS_Store
+data/
+.env
+backups/

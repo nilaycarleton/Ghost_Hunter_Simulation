@@ -1,0 +1,21 @@
+{
+  "name": "haunted-threads",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Haunted Threads: a native C concurrency lab with a browser dashboard and replay service.",
+  "scripts": {
+    "dev": "node web/server.mjs",
+    "start": "node web/server.mjs",
+    "build": "make",
+    "test": "make test",
+    "stress": "make stress",
+    "benchmark": "python3 scripts/benchmark.py",
+    "clean": "make clean",
+    "tsan": "make tsan",
+    "asan": "make asan"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

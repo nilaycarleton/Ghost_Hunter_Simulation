@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Security Disclosure for Haunted Threads.">
+  <title>Security Disclosure - Haunted Threads</title>
+  <script>
+    (() => {
+      try {
+        const stored = localStorage.getItem("haunted-theme");
+        const system = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        document.documentElement.dataset.theme = stored || system;
+      } catch {
+        document.documentElement.dataset.theme = "dark";
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="legal-body">
+  <a class="skip-link" href="#legal-main">Skip to document</a>
+  <div class="diagnostic-grid" aria-hidden="true"></div>
+  <header class="legal-header">
+    <a href="/" class="legal-back">Back to simulator</a>
+    <span class="eyebrow">LEGAL DOCUMENT</span>
+    <h1>Security Disclosure</h1>
+    <p>Last updated: August 3, 2026</p>
+  </header>
+  <main id="legal-main" class="legal-doc">
+    <section>
+      <h2>Responsible Reporting</h2>
+      <p>If you find a vulnerability affecting authentication, private replay access, public share links, exports, server execution, or stored run data, report it privately through the project maintainer before public disclosure.</p>
+    </section>
+    <section>
+      <h2>In Scope</h2>
+      <ul>
+        <li>Unauthorized access to private runs or exports.</li>
+        <li>Authentication or ownership bypasses.</li>
+        <li>Public share token leakage or escalation.</li>
+        <li>Server-side injection, denial of service, or unsafe file access.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Out of Scope</h2>
+      <p>Automated high-volume testing, social engineering, physical attacks, and testing against third-party services without authorization are out of scope.</p>
+    </section>
+    <section>
+      <h2>Contact</h2>
+      <p>Before production deployment, replace this section with a dedicated security email or SECURITY.md reporting process. For this project build, use the repository contact path.</p>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,4 +1,10 @@
-# Ghost Hunter Simulation
+# Haunted Threads
+
+> A live concurrency lab: a native C simulation with a browser dashboard,
+> deterministic random streams, shortest-path navigation, and sanitizer-backed
+> CI.
+
+![Navigation benchmark](benchmarks/navigation.svg)
 
 A multi-threaded C simulation inspired by *Phasmophobia* where hunters explore a haunted house to collect evidence and identify a ghost type.
 
@@ -64,6 +70,77 @@ make
 make clean
 ```
 
+### Run Haunted Threads in the browser
+
+Requires Node.js 22+.
+
+```bash
+make
+node web/server.mjs
+# open http://127.0.0.1:3000
+```
+
+If you prefer npm-style commands:
+
+```bash
+npm run build
+npm run dev
+```
+
+The dashboard supports:
+
+- animated movement across the connected Willow House graph;
+- POSIX-thread and deterministic scheduler modes;
+- BFS, breadcrumb, and random return navigation;
+- custom teams of one to eight hunters;
+- pause, resume, single-event stepping, restart, and playback speed controls;
+- room-level evidence markers, separate fear/boredom meters, and an event timeline;
+- keyboard navigation, reduced-motion preferences, and responsive layouts.
+- a recruiter-friendly engineering showcase explaining native concurrency,
+  canonical locking, BFS benchmarking, and the full-stack replay architecture.
+- free template-based run explanations with recruiter, engineer, beginner,
+  interviewer, and benchmark narration modes, plus optional local Ollama support.
+- guest-mode simulations plus Clerk-backed private history, replay links, and
+  JSON/CSV exports for signed-in users.
+- owner-controlled public share links for recruiter-friendly replay demos.
+
+Playback controls affect visualization only. They do not pause or reorder the
+native engine; received events remain in their sequence-numbered queue.
+
+### Full-stack session service
+
+The Node service exposes a REST and Server-Sent Events API. Every simulation is
+an isolated native process with cancellation and timeout handling. Signed-in
+runs are saved to SQLite with the Clerk user id, allowing completed runs to use
+the same SSE endpoint for private replay. Guest runs stream live but are not
+stored after completion.
+
+Saved runs are private by default. Signed-in owners can make selected completed
+runs public, copy a `/share/:token` URL, and revoke that token later without
+exposing the rest of their history.
+
+Runtime data is stored in `data/haunted-threads.db` and excluded from Git. The
+service requires Node.js 22 or newer for its built-in SQLite module.
+
+Create a local `.env` from `.env.example` and paste Clerk keys there:
+
+```dotenv
+CLERK_PUBLISHABLE_KEY=pk_test_or_pk_live_from_clerk
+CLERK_SECRET_KEY=sk_test_or_sk_live_from_clerk
+CLERK_AUTHORIZED_PARTIES=http://127.0.0.1:3000,http://localhost:3000
+```
+
+`CLERK_SECRET_KEY` is reserved for future server-side Clerk API calls. Current
+request protection verifies Clerk session JWTs using Clerk's public JWKS.
+
+See [`docs/api.md`](docs/api.md) for endpoints and request examples.
+For a project-demo deployment, use
+[`docs/render-deployment.md`](docs/render-deployment.md) with
+[`docs/production-checklist.md`](docs/production-checklist.md). The Oracle
+Cloud VM alternative remains documented in
+[`docs/oracle-cloud-deployment.md`](docs/oracle-cloud-deployment.md).
+Production-ready templates live in [`deploy/`](deploy/).
+
 ### Thread Sanitizer Build
 
 ```bash
@@ -77,7 +154,41 @@ make sanitize=tsan
 ### Running the Simulation
 
 ```bash
-./ghost_hunt
+./ghost_hunt --seed 42 --navigation bfs --hunters Ada,Grace,Linus
+```
+
+`--navigation` accepts `bfs`, `breadcrumb`, or `random`. Each entity owns a PRNG stream
+derived from the displayed seed, so its decisions are reproducible. Thread
+interleaving is intentionally left to the OS and can still change interactions;
+that scheduling nondeterminism is part of the concurrency demo.
+
+For byte-reproducible experiments, use the turn-based scheduler and export a
+machine-readable summary:
+
+```bash
+./ghost_hunt --seed 42 --deterministic --tick-ms 0 \
+  --navigation bfs --hunters Ada,Grace \
+  --output-json run.json
+```
+
+The default remains real POSIX threads. Deterministic mode calls the same entity
+step functions in a stable ghost-then-hunter order; it is an experimental
+control mode, not a replacement implementation.
+
+Long-running simulations can be bounded and accelerated:
+
+```bash
+./ghost_hunt --seed 42 --tick-ms 0 --max-ticks 500 --hunters Ada,Grace
+```
+
+Hunter names and numeric options are validated before any threads start.
+
+Common shortcuts:
+
+```bash
+npm run test
+npm run stress
+npm run benchmark
 ```
 
 ### Interactive Setup
@@ -172,6 +283,60 @@ Hunters perform the following actions:
 - Boredom reaches 15 (no hunter encounters)
 
 ## Technical Implementation
+
+### Full-stack architecture
+
+```mermaid
+flowchart LR
+  UI["Browser dashboard"] -->|GET /api/simulate| S["Node HTTP bridge"]
+  S -->|spawn + CLI config| C["Native C engine"]
+  C -->|NDJSON event stream| S
+  S -->|streamed response| UI
+  C --> P["POSIX threads + semaphores"]
+```
+
+The Node bridge has no package dependencies. It streams events from the real C
+binary, so the UI is an observability layer—not a JavaScript reimplementation.
+
+### Verification
+
+```bash
+make test
+make stress
+make asan
+make tsan
+python3 scripts/benchmark.py
+```
+
+GitHub Actions runs unit tests, Address/UndefinedBehaviorSanitizer,
+ThreadSanitizer, and Valgrind on pushes and pull requests. See
+[`docs/locking.md`](docs/locking.md) for a visual explanation of canonical
+locking.
+
+The stress target runs 200 seeds across all three navigation strategies and
+both scheduler modes with
+per-process timeouts, followed by malformed CLI cases.
+
+### Baseline navigation results
+
+Across 20 matched deterministic seeds, BFS averaged **27.0 hunter moves**,
+breadcrumbs averaged **41.6**, and random walking averaged **92.7**, with no
+timeouts. BFS therefore used approximately 35% fewer movements than breadcrumbs
+and 71% fewer than random navigation. See
+[`benchmarks/README.md`](benchmarks/README.md) for methodology and raw artifacts.
+
+Every streamed event includes a monotonically increasing `sequence` and a
+microsecond timestamp. JSON summaries capture configuration, ghost metrics,
+per-hunter ticks, movement, evidence, and exit reasons.
+
+### Optional public AI layer
+
+The clean integration point is a post-run **incident analyst**: send a bounded
+summary of the event stream to an API and return an explanation of evidence,
+contention, and navigation choices. Keep it behind a server-side endpoint with
+rate limiting and an environment-held API key. The simulation must remain
+fully usable without AI; this preserves the deterministic native engine and
+avoids exposing credentials in the browser.
 
 ### Thread Safety
 
@@ -358,7 +523,7 @@ Van ── Hallway ┬── Master Bedroom
 **Institution**: Carleton University  
 **Term**: Year 2, Semester 1  
 **Student**: Nilay Sorathia (101345637)  
-**Project**: Final Project - Ghost Hunter Simulation
+**Project**: Haunted Threads
 
 ## Learning Objectives Demonstrated
 

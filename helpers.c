@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
@@ -11,6 +12,10 @@
 
 // Static mutex for thread-safe logging and random numbers
 static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
+static unsigned int simulation_seed = 1;
+static unsigned int runtime_tick_ms = 50;
+static unsigned int runtime_max_ticks = 1000;
+static atomic_ullong event_sequence = 0;
 
 // CORRECTED STATIC STRUCTURES FOR LOGGING
 
@@ -37,6 +42,34 @@ struct LogRecord {
 // 3. Define the internal logging function prototype (Must be after the struct definition)
 static void write_log_record(const struct LogRecord* record); 
 
+static void json_escape(const char* input, char* output, size_t capacity) {
+    size_t used = 0;
+    if (!input) input = "";
+    for (const unsigned char* p = (const unsigned char*)input;
+         *p && used + 1 < capacity; p++) {
+        const char* escape = NULL;
+        char unicode[7];
+        if (*p == '"') escape = "\\\"";
+        else if (*p == '\\') escape = "\\\\";
+        else if (*p == '\n') escape = "\\n";
+        else if (*p == '\r') escape = "\\r";
+        else if (*p == '\t') escape = "\\t";
+        else if (*p < 0x20) {
+            snprintf(unicode, sizeof(unicode), "\\u%04x", *p);
+            escape = unicode;
+        }
+        if (escape) {
+            size_t length = strlen(escape);
+            if (used + length >= capacity) break;
+            memcpy(output + used, escape, length);
+            used += length;
+        } else {
+            output[used++] = (char)*p;
+        }
+    }
+    output[used] = '\0';
+}
+
 // Utility Functions
 
 /**
@@ -47,8 +80,47 @@ int rand_int_threadsafe(int lower_inclusive, int upper_exclusive) {
         return lower_inclusive;
     }
     // Use thread-local storage for better randomness in multi-threaded environments
-    unsigned int seed = time(NULL) ^ pthread_self(); 
+    unsigned int seed = (unsigned int)time(NULL) ^ (unsigned int)(uintptr_t)pthread_self();
     return (rand_r(&seed) % (upper_exclusive - lower_inclusive)) + lower_inclusive;
+}
+
+void random_set_seed(unsigned int seed) {
+    simulation_seed = seed ? seed : 1;
+    atomic_store(&event_sequence, 0);
+}
+
+unsigned int random_derive_seed(unsigned int stream_id) {
+    unsigned int value = simulation_seed ^ (stream_id + 0x9e3779b9U);
+    value ^= value >> 16;
+    value *= 0x7feb352dU;
+    value ^= value >> 15;
+    value *= 0x846ca68bU;
+    value ^= value >> 16;
+    return value ? value : 1;
+}
+
+int rand_int_r(unsigned int* state, int lower_inclusive, int upper_exclusive) {
+    if (lower_inclusive >= upper_exclusive) return lower_inclusive;
+    return (int)(rand_r(state) % (unsigned int)(upper_exclusive - lower_inclusive))
+        + lower_inclusive;
+}
+
+void simulation_set_runtime(unsigned int tick_ms, unsigned int max_ticks) {
+    runtime_tick_ms = tick_ms;
+    runtime_max_ticks = max_ticks;
+}
+
+void simulation_sleep_tick(void) {
+    if (runtime_tick_ms == 0) return;
+    struct timespec delay = {
+        .tv_sec = runtime_tick_ms / 1000U,
+        .tv_nsec = (long)(runtime_tick_ms % 1000U) * 1000000L
+    };
+    while (nanosleep(&delay, &delay) != 0 && errno == EINTR) {}
+}
+
+unsigned int simulation_max_ticks(void) {
+    return runtime_max_ticks;
 }
 
 /**
@@ -158,6 +230,7 @@ void house_populate_rooms(struct House* house) {
 // Logging Functions
 static void write_log_record(const struct LogRecord* record) {
     pthread_mutex_lock(&log_mutex);
+    unsigned long long sequence = atomic_fetch_add(&event_sequence, 1) + 1;
     
     // Get current time in microseconds
     struct timeval tv;
@@ -178,8 +251,8 @@ static void write_log_record(const struct LogRecord* record) {
         return;
     }
 
-    fprintf(fp, "%" PRIu64 ",%s,%d,%s,%s,%d,%d,%s,%s\n",
-            timestamp_us,
+    fprintf(fp, "%llu,%" PRIu64 ",%s,%d,%s,%s,%d,%d,%s,%s\n",
+            sequence, timestamp_us,
             record->entity_type == LOG_ENTITY_HUNTER ? "hunter" : "ghost",
             record->entity_id,
             record->room ? record->room : "",
@@ -190,6 +263,26 @@ static void write_log_record(const struct LogRecord* record) {
             record->extra ? record->extra : "");
 
     fclose(fp);
+
+    if (getenv("GH_JSON_EVENTS") != NULL) {
+        char room[6 * MAX_ROOM_NAME + 1];
+        char device[96];
+        char action[96];
+        char extra[6 * MAX_HUNTER_NAME + 128];
+        json_escape(record->room, room, sizeof(room));
+        json_escape(record->device, device, sizeof(device));
+        json_escape(record->action, action, sizeof(action));
+        json_escape(record->extra, extra, sizeof(extra));
+        printf("EVENT {\"sequence\":%llu,\"timestamp_us\":%" PRIu64 ","
+               "\"entity\":\"%s\",\"id\":%d,\"room\":\"%s\","
+               "\"device\":\"%s\",\"boredom\":%d,\"fear\":%d,"
+               "\"action\":\"%s\",\"extra\":\"%s\"}\n",
+               sequence, timestamp_us,
+               record->entity_type == LOG_ENTITY_HUNTER ? "hunter" : "ghost",
+               record->entity_id, room, device, record->boredom,
+               record->fear, action, extra);
+        fflush(stdout);
+    }
     pthread_mutex_unlock(&log_mutex);
 }
 
@@ -333,6 +426,23 @@ void log_return_to_van(int id, int boredom, int fear, const char* room, enum Evi
     }
 }
 
+void log_exit(int id, int boredom, int fear, const char* room,
+              enum EvidenceType device, enum LogReason reason) {
+    struct LogRecord record = {
+        .entity_type = LOG_ENTITY_HUNTER,
+        .entity_id = id,
+        .room = room,
+        .device = evidence_to_string(device),
+        .boredom = boredom,
+        .fear = fear,
+        .action = "EXIT",
+        .extra = exit_reason_to_string(reason)
+    };
+    write_log_record(&record);
+    printf("Hunter %d stopped in %s: %s (bored=%d fear=%d)\n",
+           id, room, exit_reason_to_string(reason), boredom, fear);
+}
+
 void log_ghost_evidence(int ghost_id, int boredom, const char* room_name, enum EvidenceType evidence) {
     const char* evidence_text = evidence_to_string(evidence);
 
@@ -465,6 +575,8 @@ const char* exit_reason_to_string(enum LogReason reason) {
             return "bored";
         case LR_AFRAID:
             return "afraid";
+        case LR_TIMEOUT:
+            return "timeout";
         default:
             return "unknown";
     }

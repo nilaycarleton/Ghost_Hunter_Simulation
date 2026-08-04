@@ -26,17 +26,22 @@ void ghost_init(struct Ghost* ghost, struct House* house) {
     // Assign a random Ghost Type
     const enum GhostType* ghost_types;
     int ghost_count = get_all_ghost_types(&ghost_types);
-    ghost->type = ghost_types[rand_int_threadsafe(0, ghost_count)];
+    ghost->rng_state = random_derive_seed((unsigned int)ghost->id);
+    ghost->type = ghost_types[rand_int_r(&ghost->rng_state, 0, ghost_count)];
     
     // Assign a random starting room
-    int random_room = rand_int_threadsafe(0, house->room_count);
+    int random_room = rand_int_r(&ghost->rng_state, 1, house->room_count);
     ghost->current_room = &house->rooms[random_room];
     
     // Set the ghost pointer in the starting room
     ghost->current_room->ghost = ghost;
     
     ghost->boredom = 0;
-    ghost->exited = false;
+    atomic_init(&ghost->exited, false);
+    ghost->ticks = 0;
+    ghost->moves = 0;
+    ghost->evidence_dropped = 0;
+    ghost->finalized = false;
     
     log_ghost_init(ghost->id, ghost->current_room->name, ghost->type);
 }
@@ -47,12 +52,13 @@ void ghost_init(struct Ghost* ghost, struct House* house) {
  * @param[in] ghost Pointer to the Ghost structure.
  */
 void ghost_update_stats(struct Ghost* ghost) {
-    // Check for hunter presence (assuming room mutex is not needed for check)
+    pthread_mutex_lock(&ghost->current_room->mutex);
     if (room_has_hunter(ghost->current_room)) {
         ghost->boredom = 0;
     } else {
         ghost->boredom++;
     }
+    pthread_mutex_unlock(&ghost->current_room->mutex);
 }
 
 /**
@@ -87,12 +93,13 @@ void ghost_leave_evidence(struct Ghost* ghost) {
     
     if (count > 0) {
         // Select one of the required evidence types randomly
-        int random_index = rand_int_threadsafe(0, count);
+        int random_index = rand_int_r(&ghost->rng_state, 0, count);
         enum EvidenceType evidence = (enum EvidenceType)(1 << evidence_bits[random_index]);
         
-        sem_wait(&ghost->current_room->mutex);
+        pthread_mutex_lock(&ghost->current_room->mutex);
         room_add_evidence(ghost->current_room, evidence); 
-        sem_post(&ghost->current_room->mutex);
+        pthread_mutex_unlock(&ghost->current_room->mutex);
+        ghost->evidence_dropped++;
         
         log_ghost_evidence(ghost->id, ghost->boredom, 
                           ghost->current_room->name, evidence);
@@ -105,17 +112,12 @@ void ghost_leave_evidence(struct Ghost* ghost) {
  * @param[in] ghost Pointer to the Ghost structure.
  */
 void ghost_move(struct Ghost* ghost) {
-    // Ghost will not move if a hunter is present in the current room
-    if (room_has_hunter(ghost->current_room)) {
-        return;
-    }
-    
     if (ghost->current_room->connection_count == 0) {
         return;
     }
     
     // Select a random adjacent room
-    int random_index = rand_int_threadsafe(0, ghost->current_room->connection_count);
+    int random_index = rand_int_r(&ghost->rng_state, 0, ghost->current_room->connection_count);
     struct Room* next_room = ghost->current_room->connections[random_index];
     
     struct Room* room1 = ghost->current_room;
@@ -129,8 +131,16 @@ void ghost_move(struct Ghost* ghost) {
     }
     
     // Acquire locks in canonical order
-    sem_wait(&room1->mutex);
-    sem_wait(&room2->mutex);
+    pthread_mutex_lock(&room1->mutex);
+    pthread_mutex_lock(&room2->mutex);
+
+    // Recheck only after both rooms are locked; a hunter may have entered
+    // between choosing the destination and acquiring this lock pair.
+    if (room_has_hunter(ghost->current_room)) {
+        pthread_mutex_unlock(&room2->mutex);
+        pthread_mutex_unlock(&room1->mutex);
+        return;
+    }
     
     // Update room state
     ghost->current_room->ghost = NULL; // Clear ghost pointer in old room
@@ -144,10 +154,11 @@ void ghost_move(struct Ghost* ghost) {
     
     // Final state update
     ghost->current_room = next_room;
+    ghost->moves++;
     
     // Release locks
-    sem_post(&room2->mutex);
-    sem_post(&room1->mutex);
+    pthread_mutex_unlock(&room2->mutex);
+    pthread_mutex_unlock(&room1->mutex);
 }
 
 /**
@@ -157,36 +168,46 @@ void ghost_move(struct Ghost* ghost) {
  * @param[in] arg Pointer to the Ghost structure.
  * @return NULL on thread termination.
  */
+bool ghost_step(struct Ghost* ghost) {
+    if (atomic_load(&ghost->exited)) return false;
+    ghost->ticks++;
+    ghost_update_stats(ghost);
+        
+    if (ghost_check_exit(ghost)) {
+        atomic_store(&ghost->exited, true);
+        return false;
+    }
+        
+    int action = rand_int_r(&ghost->rng_state, 0, 3);
+        
+    if (action == 0) {
+        log_ghost_idle(ghost->id, ghost->boredom, ghost->current_room->name);
+    } else if (action == 1) {
+        ghost_leave_evidence(ghost);
+    } else {
+        ghost_move(ghost);
+    }
+    return true;
+}
+
+void ghost_finalize(struct Ghost* ghost) {
+    if (ghost->finalized) return;
+    ghost->finalized = true;
+    log_ghost_exit(ghost->id, ghost->boredom, ghost->current_room->name);
+    atomic_store(&ghost->exited, true);
+    pthread_mutex_lock(&ghost->current_room->mutex);
+    ghost->current_room->ghost = NULL;
+    pthread_mutex_unlock(&ghost->current_room->mutex);
+}
+
 void* ghost_thread(void* arg) {
     struct Ghost* ghost = (struct Ghost*)arg;
-    
-    while (!ghost->exited) {
-        usleep(50000); // Sleep for 50ms
-        
-        ghost_update_stats(ghost);
-        
-        if (ghost_check_exit(ghost)) {
-            ghost->exited = true;
-            break;
-        }
-        
-        // Randomly select one of three actions: move, evidence, or idle
-        int action = rand_int_threadsafe(0, 3);
-        
-        if (action == 0) {
-            log_ghost_idle(ghost->id, ghost->boredom, ghost->current_room->name);
-        } else if (action == 1) {
-            ghost_leave_evidence(ghost);
-        } else {
-            ghost_move(ghost);
-        }
+    while (!atomic_load(&ghost->exited)
+           && ghost->ticks < simulation_max_ticks()) {
+        simulation_sleep_tick();
+        ghost_step(ghost);
     }
-    
-    log_ghost_exit(ghost->id, ghost->boredom, ghost->current_room->name);
-
-    sem_wait(&ghost->current_room->mutex);
-    ghost->current_room->ghost = NULL;
-    sem_post(&ghost->current_room->mutex);
+    ghost_finalize(ghost);
     
     return NULL;
 }

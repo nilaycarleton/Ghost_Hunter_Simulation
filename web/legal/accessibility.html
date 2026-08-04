@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Accessibility Statement for Haunted Threads.">
+  <title>Accessibility - Haunted Threads</title>
+  <script>
+    (() => {
+      try {
+        const stored = localStorage.getItem("haunted-theme");
+        const system = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        document.documentElement.dataset.theme = stored || system;
+      } catch {
+        document.documentElement.dataset.theme = "dark";
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="legal-body">
+  <a class="skip-link" href="#legal-main">Skip to document</a>
+  <div class="diagnostic-grid" aria-hidden="true"></div>
+  <header class="legal-header">
+    <a href="/" class="legal-back">Back to simulator</a>
+    <span class="eyebrow">LEGAL DOCUMENT</span>
+    <h1>Accessibility Statement</h1>
+    <p>Last updated: August 3, 2026</p>
+  </header>
+  <main id="legal-main" class="legal-doc">
+    <section>
+      <h2>Commitment</h2>
+      <p>Haunted Threads aims to provide a keyboard-accessible, readable, responsive simulator interface with clear labels, focus states, status messaging, and reduced-motion support.</p>
+    </section>
+    <section>
+      <h2>Current Features</h2>
+      <ul>
+        <li>Skip links and semantic page landmarks.</li>
+        <li>Visible keyboard focus styles.</li>
+        <li>Light and dark themes with theme-aware contrast.</li>
+        <li>Responsive mobile layout for the simulator and house graph.</li>
+        <li>Reduced-motion handling for animated effects.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Known Limitations</h2>
+      <p>The house graph is highly visual. Event logs, telemetry, and replay exports provide text alternatives for simulation activity, but the map itself may not communicate every spatial relationship to assistive technology.</p>
+    </section>
+    <section>
+      <h2>Feedback</h2>
+      <p>Before production deployment, replace this section with an accessibility contact email and response timeline. For this project build, report issues through the repository.</p>
+    </section>
+  </main>
+</body>
+</html>

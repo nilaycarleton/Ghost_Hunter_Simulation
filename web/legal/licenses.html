@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="License and third-party notices for Haunted Threads.">
+  <title>Licenses - Haunted Threads</title>
+  <script>
+    (() => {
+      try {
+        const stored = localStorage.getItem("haunted-theme");
+        const system = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        document.documentElement.dataset.theme = stored || system;
+      } catch {
+        document.documentElement.dataset.theme = "dark";
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="legal-body">
+  <a class="skip-link" href="#legal-main">Skip to document</a>
+  <div class="diagnostic-grid" aria-hidden="true"></div>
+  <header class="legal-header">
+    <a href="/" class="legal-back">Back to simulator</a>
+    <span class="eyebrow">LEGAL DOCUMENT</span>
+    <h1>Licenses</h1>
+    <p>Last updated: August 3, 2026</p>
+  </header>
+  <main id="legal-main" class="legal-doc">
+    <section>
+      <h2>Project Code</h2>
+      <p>No repository license file was found in this workspace during this footer/legal pass. Before public production use, add the intended project license and update this page to match it.</p>
+    </section>
+    <section>
+      <h2>Third-Party Services</h2>
+      <p>The app may use authentication and hosting providers in deployment. Review their required notices and terms before launch.</p>
+    </section>
+    <section>
+      <h2>Open Source Dependencies</h2>
+      <p>Before production deployment, generate and attach third-party dependency notices for Node packages, frontend assets, and any copied animation/component code.</p>
+    </section>
+    <section>
+      <h2>Repository</h2>
+      <p>Project source and deployment references are available at <a href="https://github.com/nilaycarleton/Ghost_Hunter_Simulation">GitHub repository</a>.</p>
+    </section>
+  </main>
+</body>
+</html>

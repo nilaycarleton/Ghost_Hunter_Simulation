@@ -1,0 +1,23 @@
+{
+  "bfs": {
+    "moves": 27.0,
+    "ticks": 30.0,
+    "solved": 0.0,
+    "evidence": 0.55,
+    "timeouts": 0
+  },
+  "breadcrumb": {
+    "moves": 41.6,
+    "ticks": 44.65,
+    "solved": 0.0,
+    "evidence": 0.55,
+    "timeouts": 0
+  },
+  "random": {
+    "moves": 92.7,
+    "ticks": 95.7,
+    "solved": 0.0,
+    "evidence": 0.55,
+    "timeouts": 0
+  }
+}

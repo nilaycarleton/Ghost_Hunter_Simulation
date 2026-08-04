@@ -21,7 +21,7 @@
  * @return The number of rooms in the computed path, or 0 if no path exists.
  */
 
-static int bfs_path_find(struct Room* start_room, struct Room** path) {
+int bfs_path_find(struct Room* start_room, struct Room** path) {
     if (start_room->is_exit) return 0; // Already at the van
 
     struct Room* queue[MAX_ROOMS];
@@ -99,7 +99,8 @@ static int bfs_path_find(struct Room* start_room, struct Room** path) {
  * @param[in]  use_bfs_path    True if BFS should be used for return-to-van logic.
  */
 void hunter_init(struct Hunter* hunter, const char* name, int id, 
-                 struct Room* starting_room, struct CaseFile* case_file, bool use_bfs_path) {
+                 struct Room* starting_room, struct CaseFile* case_file,
+                 enum NavigationStrategy navigation) {
     strncpy(hunter->name, name, MAX_HUNTER_NAME - 1);
     hunter->name[MAX_HUNTER_NAME - 1] = '\0';
     hunter->id = id;
@@ -109,17 +110,21 @@ void hunter_init(struct Hunter* hunter, const char* name, int id,
     const enum EvidenceType* devices;
     int device_count = get_all_evidence_types(&devices);
     // Initial device selection (still random)
-    hunter->device = devices[rand_int_threadsafe(0, device_count)]; 
+    hunter->rng_state = random_derive_seed((unsigned int)id);
+    hunter->device = devices[rand_int_r(&hunter->rng_state, 0, device_count)];
     
     stack_init(&hunter->path_stack);
     hunter->fear = 0;
     hunter->boredom = 0;
-    hunter->exited = false;
+    atomic_init(&hunter->exited, false);
     hunter->returning_to_van = false;
     hunter->exit_reason = LR_BORED;
+    hunter->ticks = 0;
+    hunter->moves = 0;
+    hunter->evidence_found = 0;
+    hunter->finalized = false;
 
-    // Bonus 3 & 4
-    hunter->use_bfs = use_bfs_path;     // Set BFS toggle
+    hunter->navigation = navigation;
     hunter->bfs_path_length = 0;
     for (int i = 0; i < MAX_ROOMS; i++) {
         hunter->visit_count[i] = 0;     // Initialize visit count for each room
@@ -142,12 +147,14 @@ void hunter_init(struct Hunter* hunter, const char* name, int id,
 
 void hunter_update_stats(struct Hunter* hunter) {
     // Check for ghost presence in the current room
+    pthread_mutex_lock(&hunter->current_room->mutex);
     if (hunter->current_room->ghost != NULL) {
         hunter->boredom = 0;
         hunter->fear++;
     } else {
         hunter->boredom++;
     }
+    pthread_mutex_unlock(&hunter->current_room->mutex);
 }
 
 /**
@@ -181,7 +188,7 @@ bool hunter_check_exit_conditions(struct Hunter* hunter) {
     hunter->returning_to_van = true;
     
     // Bonus 4: BFS pathfinding setup
-    if (hunter->use_bfs) {
+    if (hunter->navigation == NAV_BFS) {
         // Calculate the shortest path to the van and store it
         hunter->bfs_path_length = bfs_path_find(hunter->current_room, hunter->bfs_path);
         stack_clear(&hunter->path_stack); // Ensure stack is empty if using BFS
@@ -206,29 +213,31 @@ bool hunter_check_exit_conditions(struct Hunter* hunter) {
 void hunter_gather_evidence(struct Hunter* hunter) {
     enum EvidenceType current_device = hunter->device;
     
-    sem_wait(&hunter->current_room->mutex);
+    pthread_mutex_lock(&hunter->current_room->mutex);
     bool evidence_found = room_has_evidence(hunter->current_room, current_device);
     
     if (evidence_found) {
         room_remove_evidence(hunter->current_room, current_device);
     }
-    sem_post(&hunter->current_room->mutex);
+    pthread_mutex_unlock(&hunter->current_room->mutex);
     
     if (evidence_found) {
-        sem_wait(&hunter->case_file->mutex);
+        pthread_mutex_lock(&hunter->case_file->mutex);
         hunter->case_file->collected |= current_device;
         hunter->case_file->solved = is_case_solved(hunter->case_file->collected);
-        sem_post(&hunter->case_file->mutex);
+        bool solved = hunter->case_file->solved;
+        pthread_mutex_unlock(&hunter->case_file->mutex);
+        hunter->evidence_found++;
         
         log_gather(hunter->id, hunter->boredom, hunter->fear, 
-                   hunter->current_room->name, hunter->device, hunter->case_file->solved);
+                   hunter->current_room->name, hunter->device, solved);
         
         // Don't return to van if already there
         if (!hunter->current_room->is_exit) {
             hunter->exit_reason = LR_EVIDENCE; 
             hunter->returning_to_van = true;
             
-            if (hunter->use_bfs) {
+            if (hunter->navigation == NAV_BFS) {
                 hunter->bfs_path_length = bfs_path_find(hunter->current_room, hunter->bfs_path);
                 stack_clear(&hunter->path_stack);
             }
@@ -239,12 +248,12 @@ void hunter_gather_evidence(struct Hunter* hunter) {
     
     // 10% chance to become bored and return to van (only if not already returning)
     if (!hunter->returning_to_van && !hunter->current_room->is_exit) {
-        int random_chance = rand_int_threadsafe(0, 100);
+        int random_chance = rand_int_r(&hunter->rng_state, 0, 100);
         if (random_chance < 10) {
             hunter->exit_reason = LR_BORED; 
             hunter->returning_to_van = true;
 
-            if (hunter->use_bfs) {
+            if (hunter->navigation == NAV_BFS) {
                 hunter->bfs_path_length = bfs_path_find(hunter->current_room, hunter->bfs_path);
                 stack_clear(&hunter->path_stack);
             }
@@ -271,13 +280,13 @@ bool hunter_check_van(struct Hunter* hunter) {
         return false;
     }
     
-    if (hunter->exited) {
+    if (atomic_load(&hunter->exited)) {
         return false;
     }
     
     // If returning and inside the van, exit the thread
     if (hunter->returning_to_van) {
-        hunter->exited = true;
+        atomic_store(&hunter->exited, true);
         log_return_to_van(hunter->id, hunter->boredom, hunter->fear,
                           hunter->current_room->name, hunter->device, false);
         return true;
@@ -290,9 +299,9 @@ bool hunter_check_van(struct Hunter* hunter) {
     enum EvidenceType new_device = 0;
     
     // Prioritize a device not already collected
-    sem_wait(&hunter->case_file->mutex);
+    pthread_mutex_lock(&hunter->case_file->mutex);
     EvidenceByte collected = hunter->case_file->collected;
-    sem_post(&hunter->case_file->mutex);
+    pthread_mutex_unlock(&hunter->case_file->mutex);
 
     enum EvidenceType uncollected_devices[7];
     int uncollected_count = 0;
@@ -306,10 +315,10 @@ bool hunter_check_van(struct Hunter* hunter) {
 
     if (uncollected_count > 0) {
         // Choosen randomly from the uncollected devices
-        new_device = uncollected_devices[rand_int_threadsafe(0, uncollected_count)];
+        new_device = uncollected_devices[rand_int_r(&hunter->rng_state, 0, uncollected_count)];
     } else {
         // All evidence collected which is choosen randomly from all available devices
-        new_device = devices[rand_int_threadsafe(0, device_count)];
+        new_device = devices[rand_int_r(&hunter->rng_state, 0, device_count)];
     }
     
     hunter->device = new_device;
@@ -347,7 +356,7 @@ bool hunter_move(struct Hunter* hunter) {
     
     if (hunter->returning_to_van) {
         // Pathfinding Logic
-        if (hunter->use_bfs) {
+        if (hunter->navigation == NAV_BFS) {
             // BFS: Follow the pre-calculated path array
             if (hunter->bfs_path_length > 0) {
                 next_room = hunter->bfs_path[0];
@@ -355,7 +364,7 @@ bool hunter_move(struct Hunter* hunter) {
                 // Path exhausted but still not at van
                 next_room = stack_pop(&hunter->path_stack);
             }
-        } else {
+        } else if (hunter->navigation == NAV_BREADCRUMB) {
             next_room = stack_pop(&hunter->path_stack);
 
             /* 
@@ -371,6 +380,12 @@ bool hunter_move(struct Hunter* hunter) {
                         break;
                     }
                 }
+            }
+        } else {
+            int count = hunter->current_room->connection_count;
+            if (count > 0) {
+                next_room = hunter->current_room->connections[
+                    rand_int_r(&hunter->rng_state, 0, count)];
             }
         }
 
@@ -403,7 +418,7 @@ bool hunter_move(struct Hunter* hunter) {
 
         if (preferred_count > 0) {
             // Choose randomly from the preferred (least visited) rooms
-            next_room = preferred_rooms[rand_int_threadsafe(0, preferred_count)];
+            next_room = preferred_rooms[rand_int_r(&hunter->rng_state, 0, preferred_count)];
         } else {
              return false;
         }
@@ -413,8 +428,8 @@ bool hunter_move(struct Hunter* hunter) {
     struct Room* room1 = hunter->current_room;
     struct Room* room2 = next_room;
     if (room1 > room2) { struct Room* temp = room1; room1 = room2; room2 = temp; }
-    sem_wait(&room1->mutex);
-    sem_wait(&room2->mutex);
+    pthread_mutex_lock(&room1->mutex);
+    pthread_mutex_lock(&room2->mutex);
     
     bool has_space = room_has_space(next_room);
     
@@ -430,6 +445,7 @@ bool hunter_move(struct Hunter* hunter) {
         // Log movement 
         log_move(hunter->id, hunter->boredom, hunter->fear, 
                 from_name, next_room->name, hunter->device);
+        hunter->moves++;
         
         if (!hunter->returning_to_van) {
             // Push to stack and update visit count
@@ -438,7 +454,7 @@ bool hunter_move(struct Hunter* hunter) {
             }
             hunter->visit_count[next_room->index]++;
 
-        } else if (hunter->use_bfs && hunter->bfs_path_length > 0) {
+        } else if (hunter->navigation == NAV_BFS && hunter->bfs_path_length > 0) {
             // Shift the path array to remove the room just entered
             for (int i = 0; i < hunter->bfs_path_length - 1; i++) {
                 hunter->bfs_path[i] = hunter->bfs_path[i + 1];
@@ -455,8 +471,8 @@ bool hunter_move(struct Hunter* hunter) {
         hunter->current_room = next_room;
     }
     
-    sem_post(&room2->mutex);
-    sem_post(&room1->mutex);
+    pthread_mutex_unlock(&room2->mutex);
+    pthread_mutex_unlock(&room1->mutex);
     
     return has_space;
 }
@@ -478,36 +494,45 @@ bool hunter_move(struct Hunter* hunter) {
  * @return NULL upon termination.
  */
 
+bool hunter_step(struct Hunter* hunter) {
+    if (atomic_load(&hunter->exited)) return false;
+    hunter->ticks++;
+    hunter_update_stats(hunter);
+        
+    if (hunter_check_van(hunter)) return false;
+        
+    hunter_check_exit_conditions(hunter);
+        
+    if (!hunter->current_room->is_exit && !hunter->returning_to_van) {
+        hunter_gather_evidence(hunter);
+    }
+        
+    hunter_move(hunter);
+    return !atomic_load(&hunter->exited);
+}
+
+void hunter_finalize(struct Hunter* hunter) {
+    if (hunter->finalized) return;
+    hunter->finalized = true;
+    if (!atomic_load(&hunter->exited)) {
+        hunter->exit_reason = LR_TIMEOUT;
+        log_exit(hunter->id, hunter->boredom, hunter->fear,
+                 hunter->current_room->name, hunter->device, LR_TIMEOUT);
+    }
+    atomic_store(&hunter->exited, true);
+    pthread_mutex_lock(&hunter->current_room->mutex);
+    room_remove_hunter(hunter->current_room, hunter->id);
+    pthread_mutex_unlock(&hunter->current_room->mutex);
+    stack_cleanup(&hunter->path_stack);
+}
+
 void* hunter_thread(void* arg) {
     struct Hunter* hunter = (struct Hunter*)arg;
-    
-    while (!hunter->exited) {
-        usleep(50000);
-        
-        hunter_update_stats(hunter);
-        
-        if (hunter_check_van(hunter)) {
-            break;
-        }
-        
-        if (hunter_check_exit_conditions(hunter)) {
-            // Continue loop to allow movement back to van
-        }
-        
-        // Only gather evidence if NOT in van and NOT already returning
-        if (!hunter->current_room->is_exit && !hunter->returning_to_van) {
-            hunter_gather_evidence(hunter);
-        }
-        
-        hunter_move(hunter);
+    while (!atomic_load(&hunter->exited)
+           && hunter->ticks < simulation_max_ticks()) {
+        simulation_sleep_tick();
+        hunter_step(hunter);
     }
-    
-    // Cleanup
-    sem_wait(&hunter->current_room->mutex);
-    room_remove_hunter(hunter->current_room, hunter->id);
-    sem_post(&hunter->current_room->mutex);
-    
-    stack_cleanup(&hunter->path_stack);
-    
+    hunter_finalize(hunter);
     return NULL;
 }

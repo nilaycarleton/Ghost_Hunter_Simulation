@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Terms of Use for Haunted Threads.">
+  <title>Terms of Use - Haunted Threads</title>
+  <script>
+    (() => {
+      try {
+        const stored = localStorage.getItem("haunted-theme");
+        const system = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        document.documentElement.dataset.theme = stored || system;
+      } catch {
+        document.documentElement.dataset.theme = "dark";
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="legal-body">
+  <a class="skip-link" href="#legal-main">Skip to document</a>
+  <div class="diagnostic-grid" aria-hidden="true"></div>
+  <header class="legal-header">
+    <a href="/" class="legal-back">Back to simulator</a>
+    <span class="eyebrow">LEGAL DOCUMENT</span>
+    <h1>Terms of Use</h1>
+    <p>Last updated: August 3, 2026</p>
+  </header>
+  <main id="legal-main" class="legal-doc">
+    <section>
+      <h2>Use of the Site</h2>
+      <p>Haunted Threads is provided as a technical simulation and portfolio-style engineering project. You may use the site to configure simulations, view live event streams, save account runs when enabled, export data, and share public replay links.</p>
+    </section>
+    <section>
+      <h2>Accounts</h2>
+      <p>You are responsible for activity under your account. Do not attempt to access another user's private replay history, exports, account data, or authentication session.</p>
+    </section>
+    <section>
+      <h2>Acceptable Use</h2>
+      <ul>
+        <li>Do not attack, overload, scrape, or disrupt the service.</li>
+        <li>Do not submit unlawful, abusive, identifying, or sensitive personal data as hunter names or run metadata.</li>
+        <li>Do not publish a replay link if it contains information you do not want public.</li>
+        <li>Do not bypass rate limits, ownership checks, or authentication controls.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Public Shares and Exports</h2>
+      <p>Public shares and exports may expose simulation configuration, event logs, hunter names, timestamps, and replay metadata. Review a run before making it public or distributing an export.</p>
+    </section>
+    <section>
+      <h2>No Warranty</h2>
+      <p>The site is provided as-is for demonstration and educational use. It may contain bugs, downtime, incomplete data, or incorrect explanations.</p>
+    </section>
+    <section>
+      <h2>Age</h2>
+      <p>This is a general-audience technical simulator. Do not create an account or submit personal information if you are under 13.</p>
+    </section>
+    <section>
+      <h2>Operator Details</h2>
+      <p>Before production deployment, replace this section with the legal operator name, jurisdiction, contact details, and any required dispute terms.</p>
+    </section>
+  </main>
+</body>
+</html>
