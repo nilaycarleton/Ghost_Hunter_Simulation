@@ -13,7 +13,7 @@ if (existsSync(".env")) process.loadEnvFile?.(".env");
 const root = normalize(fileURLToPath(new URL("..", import.meta.url)));
 const web = join(root, "web");
 const port = Number(process.env.PORT || 3000);
-const host = process.env.HOST || "127.0.0.1";
+const host = process.env.HOST || (process.env.RENDER ? "0.0.0.0" : "127.0.0.1");
 const types = { ".html": "text/html", ".css": "text/css", ".js": "text/javascript" };
 const database = new RunDatabase(process.env.DATABASE_PATH || join(root, "data", "haunted-threads.db"));
 const sessions = new SessionManager({
