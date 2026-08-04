@@ -310,8 +310,9 @@ async function authorizeRun(req, id) {
 function contentSecurityPolicy() {
   const config = clerkRuntimeConfig();
   const origins = ["'self'"];
-  if (config.frontendApi) origins.push(`https://${config.frontendApi}`);
-  return [
+  const clerkOrigin = cspOrigin(config.frontendApi);
+  if (clerkOrigin) origins.push(clerkOrigin);
+  return sanitizeHeaderValue([
     "default-src 'self'",
     "style-src 'self' 'unsafe-inline'",
     `script-src ${origins.join(" ")} 'unsafe-inline'`,
@@ -319,13 +320,32 @@ function contentSecurityPolicy() {
     `frame-src ${origins.join(" ")}`,
     `frame-ancestors ${frameAncestors()}`,
     "img-src 'self' data: https:",
-  ].join("; ");
+  ].join("; "));
 }
 
 function frameAncestors() {
   const configured = (process.env.PUBLIC_FRAME_ANCESTORS || "")
-    .split(",").map(origin => origin.trim()).filter(Boolean);
+    .split(",").map(cspOrigin).filter(Boolean);
   return ["'self'", ...configured].join(" ");
+}
+
+function cspOrigin(value) {
+  const raw = String(value || "").trim();
+  if (/[\x00-\x1f\x7f]/.test(raw)) return "";
+  const candidate = sanitizeHeaderValue(raw);
+  if (!candidate) return "";
+  try {
+    const url = new URL(candidate.startsWith("http://") || candidate.startsWith("https://")
+      ? candidate
+      : `https://${candidate}`);
+    return ["http:", "https:"].includes(url.protocol) ? url.origin : "";
+  } catch {
+    return "";
+  }
+}
+
+function sanitizeHeaderValue(value) {
+  return String(value).replace(/[^\x20-\x7e]/g, "");
 }
 
 function createShareToken() {
