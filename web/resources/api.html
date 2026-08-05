@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="API reference for Haunted Threads sessions, replays, shares, exports, and health checks.">
+  <title>API Reference - Haunted Threads</title>
+  <script>
+    (() => {
+      try {
+        const stored = localStorage.getItem("haunted-theme");
+        const system = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        document.documentElement.dataset.theme = stored || system;
+      } catch {
+        document.documentElement.dataset.theme = "dark";
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="resource-body">
+  <a class="skip-link" href="#resource-main">Skip to API reference</a>
+  <div class="diagnostic-grid" aria-hidden="true"></div>
+  <header class="resource-header">
+    <a href="/" class="resource-back">Back to simulator</a>
+    <span class="eyebrow">RESOURCE</span>
+    <h1>Session API</h1>
+    <p>Native simulations run as isolated server processes. The browser controls them through REST endpoints and Server-Sent Events.</p>
+  </header>
+  <main id="resource-main" class="resource-doc">
+    <section>
+      <h2>Authentication Model</h2>
+      <p>Guests can create live simulations without signing in. Signed-in users send a Clerk session token as a Bearer token and get private saved runs, replays, and exports.</p>
+      <pre><code>Authorization: Bearer &lt;clerk-session-token&gt;</code></pre>
+    </section>
+    <section>
+      <h2>Core Endpoints</h2>
+      <div class="resource-table" role="table" aria-label="Core API endpoints">
+        <span>Method</span><span>Path</span><span>Purpose</span>
+        <b>GET</b><code>/api/health</code><p>Returns service status and active session count.</p>
+        <b>GET</b><code>/api/auth/config</code><p>Returns Clerk browser configuration when auth is enabled.</p>
+        <b>POST</b><code>/api/sessions</code><p>Creates a live simulation session.</p>
+        <b>GET</b><code>/api/sessions/:id/events</code><p>Streams live or replayed simulation events through SSE.</p>
+        <b>DELETE</b><code>/api/sessions/:id</code><p>Cancels an active native worker.</p>
+      </div>
+    </section>
+    <section>
+      <h2>Create A Session</h2>
+      <pre><code>POST /api/sessions
+Content-Type: application/json
+
+{
+  "seed": 42,
+  "scheduler": "deterministic",
+  "navigation": "bfs",
+  "hunters": ["Ada", "Grace"]
+}</code></pre>
+      <p>The response includes the session id, event stream URL, replay URL, and whether the run was persisted.</p>
+    </section>
+    <section>
+      <h2>Sharing And Exports</h2>
+      <div class="resource-table" role="table" aria-label="Sharing and export endpoints">
+        <span>Method</span><span>Path</span><span>Purpose</span>
+        <b>GET</b><code>/api/runs?limit=20</code><p>Lists signed-in user's private run history.</p>
+        <b>POST</b><code>/api/runs/:id/share</code><p>Makes a completed run public.</p>
+        <b>DELETE</b><code>/api/runs/:id/share</code><p>Revokes a public share token.</p>
+        <b>GET</b><code>/api/shares/:token/events</code><p>Streams a public replay.</p>
+        <b>GET</b><code>/api/runs/:id/export?format=json</code><p>Downloads a signed-in run export.</p>
+      </div>
+    </section>
+    <section>
+      <h2>Operational Limits</h2>
+      <p>Session creation is rate-limited per client address. Render Free should use a low worker count such as <code>MAX_CONCURRENT_SESSIONS=2</code> and a timeout such as <code>SESSION_TIMEOUT_MS=60000</code>.</p>
+    </section>
+  </main>
+</body>
+</html>

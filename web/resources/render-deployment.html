@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Render deployment guide for Haunted Threads.">
+  <title>Render Deployment - Haunted Threads</title>
+  <script>
+    (() => {
+      try {
+        const stored = localStorage.getItem("haunted-theme");
+        const system = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        document.documentElement.dataset.theme = stored || system;
+      } catch {
+        document.documentElement.dataset.theme = "dark";
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="resource-body">
+  <a class="skip-link" href="#resource-main">Skip to deployment guide</a>
+  <div class="diagnostic-grid" aria-hidden="true"></div>
+  <header class="resource-header">
+    <a href="/" class="resource-back">Back to simulator</a>
+    <span class="eyebrow">RESOURCE</span>
+    <h1>Render Deployment</h1>
+    <p>How this C-backed Node app runs on Render without a manually managed VM.</p>
+  </header>
+  <main id="resource-main" class="resource-doc">
+    <section>
+      <h2>Service Type</h2>
+      <p>Select <b>Web Service</b>. Static hosting will not work because the browser app needs a Node server that spawns the compiled C binary.</p>
+    </section>
+    <section>
+      <h2>Render Settings</h2>
+      <div class="resource-table two-column" role="table" aria-label="Render settings">
+        <span>Setting</span><span>Value</span>
+        <b>Repository</b><code>nilaycarleton/Ghost_Hunter_Simulation</code>
+        <b>Branch</b><code>main</code>
+        <b>Runtime</b><code>Node</code>
+        <b>Build Command</b><code>npm run build</code>
+        <b>Start Command</b><code>npm start</code>
+        <b>Health Check</b><code>/api/health</code>
+      </div>
+    </section>
+    <section>
+      <h2>Environment</h2>
+      <p>Use Render's environment UI for secrets. Do not commit real Clerk keys.</p>
+      <pre><code>NODE_ENV=production
+HOST=0.0.0.0
+PORT=10000
+DATABASE_PATH=data/haunted-threads.db
+AI_PROVIDER=template</code></pre>
+    </section>
+    <section>
+      <h2>Custom Domain</h2>
+      <p>Add <code>hauntedthreads.site</code> and <code>www.hauntedthreads.site</code> in Render custom domains. Then replace the Namecheap parking and redirect records with the exact DNS records Render provides.</p>
+    </section>
+    <section>
+      <h2>Storage Note</h2>
+      <p>Render Free is good for a project demo. Durable run history requires a paid disk, a volume-based host, or an external database.</p>
+    </section>
+  </main>
+</body>
+</html>

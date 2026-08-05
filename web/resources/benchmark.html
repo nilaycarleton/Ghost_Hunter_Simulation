@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Navigation benchmark summary for Haunted Threads.">
+  <title>Navigation Benchmark - Haunted Threads</title>
+  <script>
+    (() => {
+      try {
+        const stored = localStorage.getItem("haunted-theme");
+        const system = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        document.documentElement.dataset.theme = stored || system;
+      } catch {
+        document.documentElement.dataset.theme = "dark";
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="resource-body">
+  <a class="skip-link" href="#resource-main">Skip to benchmark</a>
+  <div class="diagnostic-grid" aria-hidden="true"></div>
+  <header class="resource-header">
+    <a href="/" class="resource-back">Back to simulator</a>
+    <span class="eyebrow">RESOURCE</span>
+    <h1>Navigation Benchmark</h1>
+    <p>BFS, breadcrumb, and random return strategies measured across repeatable seeded runs.</p>
+  </header>
+  <main id="resource-main" class="resource-doc">
+    <section>
+      <h2>Summary</h2>
+      <p>The benchmark compares hunter movement cost. Lower moves and ticks indicate a more efficient return strategy.</p>
+      <div class="benchmark-bars" aria-label="Average hunter moves by strategy">
+        <article style="--score:29%;">
+          <b>BFS</b>
+          <div><i></i></div>
+          <span>27.0 moves</span>
+        </article>
+        <article style="--score:45%;">
+          <b>Breadcrumb</b>
+          <div><i></i></div>
+          <span>41.6 moves</span>
+        </article>
+        <article style="--score:100%;">
+          <b>Random</b>
+          <div><i></i></div>
+          <span>92.7 moves</span>
+        </article>
+      </div>
+    </section>
+    <section>
+      <h2>Results</h2>
+      <div class="resource-table" role="table" aria-label="Navigation benchmark results">
+        <span>Strategy</span><span>Avg Moves</span><span>Avg Ticks</span>
+        <b>BFS</b><code>27.0</code><p>30.0 ticks</p>
+        <b>Breadcrumb</b><code>41.6</code><p>44.65 ticks</p>
+        <b>Random</b><code>92.7</code><p>95.7 ticks</p>
+      </div>
+    </section>
+    <section>
+      <h2>Interpretation</h2>
+      <p>BFS is the shortest-path strategy and produced the lowest movement cost in this benchmark. Breadcrumb performed better than random movement but still spent extra steps retracing path history. Random remains the intentionally inefficient baseline.</p>
+    </section>
+    <section>
+      <h2>How To Reproduce</h2>
+      <pre><code>npm run benchmark</code></pre>
+      <p>The benchmark script runs seeded simulations and writes summary artifacts under the repository's benchmark data.</p>
+    </section>
+  </main>
+</body>
+</html>

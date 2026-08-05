@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Render production checklist for Haunted Threads.">
+  <title>Production Checklist - Haunted Threads</title>
+  <script>
+    (() => {
+      try {
+        const stored = localStorage.getItem("haunted-theme");
+        const system = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        document.documentElement.dataset.theme = stored || system;
+      } catch {
+        document.documentElement.dataset.theme = "dark";
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="resource-body">
+  <a class="skip-link" href="#resource-main">Skip to checklist</a>
+  <div class="diagnostic-grid" aria-hidden="true"></div>
+  <header class="resource-header">
+    <a href="/" class="resource-back">Back to simulator</a>
+    <span class="eyebrow">RESOURCE</span>
+    <h1>Production Checklist</h1>
+    <p>A launch checklist for the Render Free deployment at hauntedthreads.site.</p>
+  </header>
+  <main id="resource-main" class="resource-doc">
+    <section>
+      <h2>Repository</h2>
+      <ul class="checklist">
+        <li><span></span><p><code>main</code> includes the C backend, Node server, frontend, tests, docs, and legal pages.</p></li>
+        <li><span></span><p><code>.env</code> is not committed.</p></li>
+        <li><span></span><p><code>npm run build</code> and <code>npm test</code> pass.</p></li>
+      </ul>
+    </section>
+    <section>
+      <h2>Render Service</h2>
+      <ul class="checklist">
+        <li><span></span><p>Service type is <b>Web Service</b>.</p></li>
+        <li><span></span><p>Build command is <code>npm run build</code>.</p></li>
+        <li><span></span><p>Start command is <code>npm start</code>.</p></li>
+        <li><span></span><p>Health check path is <code>/api/health</code>.</p></li>
+      </ul>
+    </section>
+    <section>
+      <h2>Environment</h2>
+      <pre><code>NODE_ENV=production
+HOST=0.0.0.0
+PORT=10000
+DATABASE_PATH=data/haunted-threads.db
+MAX_CONCURRENT_SESSIONS=2
+SESSION_TIMEOUT_MS=60000
+AI_PROVIDER=template</code></pre>
+    </section>
+    <section>
+      <h2>Smoke Test</h2>
+      <ul class="checklist">
+        <li><span></span><p>Homepage loads on the Render subdomain.</p></li>
+        <li><span></span><p>Guest mode can run a simulation.</p></li>
+        <li><span></span><p>Legal footer links load.</p></li>
+        <li><span></span><p>Mobile layout and light/dark mode work.</p></li>
+        <li><span></span><p><code>/api/health</code> returns <code>status: ok</code>.</p></li>
+      </ul>
+    </section>
+    <section>
+      <h2>Render Free Caveats</h2>
+      <p>Cold starts are expected. SQLite files on Render Free are temporary, so saved run history and public share links are demo-only unless storage is upgraded.</p>
+    </section>
+  </main>
+</body>
+</html>
