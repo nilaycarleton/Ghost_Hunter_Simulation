@@ -4,11 +4,11 @@ const jwksCache = new Map();
 
 export function clerkRuntimeConfig() {
   const publishableKey = process.env.CLERK_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || "";
-  const frontendApi = process.env.CLERK_FRONTEND_API || decodeClerkFrontendApi(publishableKey);
+  const frontendApi = normalizeClerkFrontendApi(process.env.CLERK_FRONTEND_API || decodeClerkFrontendApi(publishableKey));
   const issuer = process.env.CLERK_ISSUER || (frontendApi ? `https://${frontendApi}` : "");
   const jwksUrl = process.env.CLERK_JWKS_URL || (issuer ? `${issuer}/.well-known/jwks.json` : "");
   return {
-    enabled: Boolean(publishableKey && issuer && jwksUrl),
+    enabled: Boolean(publishableKey.startsWith("pk_") && frontendApi && issuer && jwksUrl),
     publishableKey,
     frontendApi,
     issuer,
@@ -83,7 +83,21 @@ export function decodeClerkFrontendApi(publishableKey) {
   const encoded = publishableKey.split("_")[2];
   if (!encoded) return "";
   try {
-    return base64urlDecode(encoded).toString("utf8").replace(/\$$/, "");
+    return normalizeClerkFrontendApi(base64urlDecode(encoded).toString("utf8").replace(/\$$/, ""));
+  } catch {
+    return "";
+  }
+}
+
+function normalizeClerkFrontendApi(value) {
+  const candidate = String(value || "").trim();
+  if (!candidate || /[\x00-\x1f\x7f]/.test(candidate)) return "";
+  try {
+    const parsed = new URL(candidate.startsWith("http://") || candidate.startsWith("https://")
+      ? candidate
+      : `https://${candidate}`);
+    const hostname = parsed.hostname;
+    return /^[A-Za-z0-9.-]+$/.test(hostname) && hostname.includes(".") ? hostname : "";
   } catch {
     return "";
   }
