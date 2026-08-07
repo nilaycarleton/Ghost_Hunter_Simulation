@@ -4,6 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="Haunted Threads: an interactive visualization of a concurrent C ghost-hunting simulation.">
+  <meta name="theme-color" content="#10110f" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f3f1e8" media="(prefers-color-scheme: light)">
+  <meta property="og:title" content="Haunted Threads">
+  <meta property="og:description" content="Interactive visualization of a concurrent C ghost-hunting simulation.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="/assets/brand/logo-mark-512.png">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:image" content="/assets/brand/logo-mark-512.png">
   <title>Haunted Threads</title>
   <script>
     (() => {
@@ -16,6 +24,9 @@
       }
     })();
   </script>
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/brand/favicon-16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/brand/favicon-32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/brand/apple-touch-icon.png">
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
@@ -24,8 +35,14 @@
 
   <header class="topbar">
     <div class="brand-lockup">
+      <div class="brand-media">
+        <img class="brand-mark" src="/assets/brand/logo-mark-192.png" width="192" height="192" alt="" decoding="async">
+        <div class="brand-title">
+          <span>Paranormal Systems Lab</span>
+          <h1>Haunted Threads</h1>
+        </div>
+      </div>
       <span class="eyebrow">LIVE C CONCURRENCY LAB</span>
-      <h1>Haunted Threads</h1>
       <p>Native hunters, one ghost, shared rooms, evidence trails, and a visible path home.</p>
       <nav class="site-nav" aria-label="Primary navigation">
         <a href="#simulation">Simulator</a>
@@ -38,7 +55,10 @@
     <div class="topbar-tools">
       <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to light mode" aria-pressed="true">
         <span class="theme-icon" aria-hidden="true"></span>
-        <span id="theme-label">Dark</span>
+        <span class="theme-copy">
+          <b>Interface</b>
+          <span id="theme-label">Dark</span>
+        </span>
       </button>
       <div class="auth-panel" aria-label="Account controls">
         <div>
@@ -216,8 +236,13 @@
 
   <footer class="site-footer">
     <section class="footer-brand" aria-labelledby="footer-brand-title">
-      <span class="eyebrow">PROJECT STATUS</span>
-      <b id="footer-brand-title">Haunted Threads</b>
+      <div class="footer-lockup">
+        <img class="footer-mark" src="/assets/brand/logo-mark-192.png" width="192" height="192" alt="" loading="lazy" decoding="async">
+        <div>
+          <span class="eyebrow">PROJECT STATUS</span>
+          <b id="footer-brand-title">Haunted Threads</b>
+        </div>
+      </div>
       <p>Concurrent C ghost-hunting simulation with live browser replay, exports, and shareable run history.</p>
       <small>&copy; 2026 Haunted Threads project maintainers.</small>
     </section>

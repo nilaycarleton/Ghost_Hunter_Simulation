@@ -1,7 +1,7 @@
 const rooms = [
   ["Van",2,44],["Hallway",24,39],["Master Bedroom",45,12],["Boy's Bedroom",45,29],
-  ["Bathroom",45,46],["Basement",45,68],["Basement Hallway",66,68],
-  ["Right Storage Room",82,57],["Left Storage Room",82,76],["Kitchen",24,15],
+  ["Bathroom",45,46],["Basement",45,68],["Basement Hallway",63,68],
+  ["Right Storage Room",74,57],["Left Storage Room",74,76],["Kitchen",24,15],
   ["Living Room",4,5],["Garage",5,24],["Utility Room",5,62]
 ];
 const roomLayouts = {

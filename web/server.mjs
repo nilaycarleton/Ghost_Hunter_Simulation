@@ -16,7 +16,17 @@ const port = Number(process.env.PORT || 3000);
 const host = process.env.NODE_ENV === "production"
   ? "0.0.0.0"
   : process.env.HOST || "127.0.0.1";
-const types = { ".html": "text/html", ".css": "text/css", ".js": "text/javascript" };
+const types = {
+  ".html": "text/html; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".svg": "image/svg+xml",
+  ".webp": "image/webp",
+  ".ico": "image/x-icon",
+};
 const database = new RunDatabase(process.env.DATABASE_PATH || join(root, "data", "haunted-threads.db"));
 const sessions = new SessionManager({
   root, database,

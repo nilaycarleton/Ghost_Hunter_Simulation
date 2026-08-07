@@ -88,6 +88,11 @@ html[data-theme="light"] {
 
 html { scroll-behavior: smooth; }
 
+img {
+  max-width: 100%;
+  height: auto;
+}
+
 body {
   margin: 0;
   min-width: 320px;
@@ -170,9 +175,41 @@ body::before {
 
 .brand-lockup {
   position: relative;
-  min-height: 172px;
+  min-height: 0;
   padding: 22px;
   overflow: hidden;
+}
+
+.brand-media {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.brand-mark {
+  display: block;
+  width: 84px;
+  height: 84px;
+  flex: 0 0 84px;
+  object-fit: cover;
+  border: 1px solid rgba(79, 209, 181, .32);
+  border-radius: 8px;
+  background: rgba(9, 10, 9, .48);
+  box-shadow: 0 0 30px rgba(79, 209, 181, .18);
+}
+
+.brand-title {
+  min-width: 0;
+}
+
+.brand-title span {
+  display: block;
+  color: var(--amber);
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .16em;
+  text-transform: uppercase;
 }
 
 .brand-lockup::after,
@@ -211,8 +248,8 @@ h2 {
 
 h1 {
   max-width: 780px;
-  margin: 8px 0 10px;
-  font-size: 4rem;
+  margin: 4px 0 0;
+  font-size: clamp(2.45rem, 5.2vw, 4.85rem);
   line-height: .9;
   text-transform: uppercase;
 }
@@ -248,14 +285,14 @@ h1 {
 }
 
 .site-nav a {
-  min-height: 36px;
+  min-height: 38px;
   display: inline-flex;
   align-items: center;
-  padding: 8px 10px;
-  border: 1px solid var(--line);
+  padding: 8px 12px;
+  border: 1px solid rgba(79, 209, 181, .28);
   border-radius: 999px;
-  background: var(--stat-bg);
-  color: var(--muted);
+  background: color-mix(in srgb, var(--stat-bg) 80%, var(--teal) 20%);
+  color: var(--ink);
   font-size: .72rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -313,14 +350,36 @@ h1 {
 #user-button { min-width: 36px; }
 
 .theme-toggle {
+  display: grid;
+  grid-template-columns: auto 1fr;
   width: 100%;
-  justify-content: space-between;
-  min-height: 46px;
+  justify-content: start;
+  min-height: 58px;
+  padding-inline: 16px;
   border-color: var(--line);
   background: var(--panel-bg);
   color: var(--ink);
   text-transform: uppercase;
   font-weight: 700;
+}
+
+.theme-copy {
+  display: grid;
+  justify-items: end;
+  width: 100%;
+  line-height: 1.05;
+}
+
+.theme-copy b {
+  color: var(--muted);
+  font-size: .62rem;
+  letter-spacing: .12em;
+}
+
+.theme-copy span {
+  color: var(--ink);
+  font-size: .84rem;
+  letter-spacing: .04em;
 }
 
 .theme-icon {
@@ -1079,6 +1138,24 @@ button:disabled,
   gap: 8px;
 }
 
+.footer-lockup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.footer-mark {
+  width: 58px;
+  height: 58px;
+  flex: 0 0 58px;
+  border: 1px solid rgba(79, 209, 181, .3);
+  border-radius: 8px;
+  background: rgba(9, 10, 9, .42);
+  object-fit: cover;
+  box-shadow: 0 0 24px rgba(79, 209, 181, .14);
+}
+
 .footer-brand b,
 .footer-group b {
   color: var(--ink);
@@ -1144,6 +1221,18 @@ button:disabled,
   margin-top: 24px;
   padding: 22px;
   overflow: hidden;
+}
+
+.doc-mark {
+  display: block;
+  width: 54px;
+  height: 54px;
+  margin-bottom: 14px;
+  border: 1px solid rgba(79, 209, 181, .28);
+  border-radius: 8px;
+  background: rgba(9, 10, 9, .42);
+  object-fit: cover;
+  box-shadow: 0 0 24px rgba(79, 209, 181, .14);
 }
 
 .legal-back,
@@ -1397,7 +1486,7 @@ button:disabled,
 
 @media (max-width: 900px) {
   h1 {
-    font-size: 3rem;
+    font-size: 3.2rem;
   }
 
   .sim-shell,
@@ -1453,11 +1542,26 @@ button:disabled,
   }
 
   h1 {
-    font-size: 2.35rem;
+    font-size: 2.1rem;
   }
 
   .brand-lockup {
     min-height: 0;
+  }
+
+  .brand-media {
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .brand-mark {
+    width: 58px;
+    height: 58px;
+    flex: 0 0 58px;
+  }
+
+  .brand-title span {
+    font-size: .62rem;
   }
 
   .site-nav {
@@ -1475,7 +1579,11 @@ button:disabled,
   }
 
   .auth-panel {
-    grid-template-columns: 1fr;
+    grid-template-columns: auto 1fr;
+  }
+
+  .auth-actions {
+    grid-column: 1 / -1;
   }
 
   .theme-toggle {
@@ -1545,6 +1653,16 @@ button:disabled,
 
   .footer-brand p {
     max-width: none;
+  }
+
+  .footer-lockup {
+    align-items: flex-start;
+  }
+
+  .footer-mark {
+    width: 48px;
+    height: 48px;
+    flex-basis: 48px;
   }
 
   .legal-header,
